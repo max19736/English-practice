@@ -1,0 +1,74 @@
+{
+  "lessons": [
+    {
+      "name": "englishpod_0001",
+      "mp3_pb": "lessons/englishpod_0001pb.mp3",
+      "mp3_dg": "lessons/englishpod_0001dg.mp3",
+      "txt": "lessons/englishpod_0001dg.txt",
+      "pdf": "lessons/englishpod_0001dg.pdf"
+    },
+    {
+      "name": "englishpod_0002",
+      "mp3_pb": "lessons/englishpod_0002pb.mp3",
+      "mp3_dg": "lessons/englishpod_0002dg.mp3",
+      "txt": "lessons/englishpod_0002dg.txt",
+      "pdf": "lessons/englishpod_0002dg.pdf"
+    },
+    {
+      "name": "englishpod_0003",
+      "mp3_pb": "lessons/englishpod_0003pb.mp3",
+      "mp3_dg": "lessons/englishpod_0003dg.mp3",
+      "txt": "lessons/englishpod_0003dg.txt",
+      "pdf": "lessons/englishpod_0003dg.pdf"
+    },
+    {
+      "name": "englishpod_0004",
+      "mp3_pb": "lessons/englishpod_0004pb.mp3",
+      "mp3_dg": "lessons/englishpod_0004dg.mp3",
+      "txt": "lessons/englishpod_0004dg.txt",
+      "pdf": "lessons/englishpod_0004dg.pdf"
+    },
+    {
+      "name": "englishpod_0005",
+      "mp3_pb": "lessons/englishpod_0005pb.mp3",
+      "mp3_dg": "lessons/englishpod_0005dg.mp3",
+      "txt": "lessons/englishpod_0005dg.txt",
+      "pdf": "lessons/englishpod_0005dg.pdf"
+    },
+    {
+      "name": "englishpod_0006",
+      "mp3_pb": "lessons/englishpod_0006pb.mp3",
+      "mp3_dg": "lessons/englishpod_0006dg.mp3",
+      "txt": "lessons/englishpod_0006dg.txt",
+      "pdf": "lessons/englishpod_0006dg.pdf"
+    },
+    {
+      "name": "englishpod_0007",
+      "mp3_pb": "lessons/englishpod_0007pb.mp3",
+      "mp3_dg": "lessons/englishpod_0007dg.mp3",
+      "txt": "lessons/englishpod_0007dg.txt",
+      "pdf": "lessons/englishpod_0007dg.pdf"
+    },
+    {
+      "name": "englishpod_0008",
+      "mp3_pb": "lessons/englishpod_0008pb.mp3",
+      "mp3_dg": "lessons/englishpod_0008dg.mp3",
+      "txt": "lessons/englishpod_0008dg.txt",
+      "pdf": "lessons/englishpod_0008dg.pdf"
+    },
+    {
+      "name": "englishpod_0009",
+      "mp3_pb": "lessons/englishpod_0009pb.mp3",
+      "mp3_dg": "lessons/englishpod_0009dg.mp3",
+      "txt": "lessons/englishpod_0009dg.txt",
+      "pdf": "lessons/englishpod_0009dg.pdf"
+    },
+    {
+      "name": "englishpod_0010",
+      "mp3_pb": "lessons/englishpod_0010pb.mp3",
+      "mp3_dg": "lessons/englishpod_0010dg.mp3",
+      "txt": "lessons/englishpod_0010dg.txt",
+      "pdf": "lessons/englishpod_0010dg.pdf"
+    }
+  ]
+}

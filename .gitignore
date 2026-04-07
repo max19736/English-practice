@@ -1,0 +1,6 @@
+# 版權教材 - 不上傳到 GitHub
+lessons/
+
+# Python 暫存
+__pycache__/
+*.pyc

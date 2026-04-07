@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 口說練習</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;
+      --border: #2e3352; --accent: #5b6cf9; --accent2: #7483ff;
+      --text: #e8eaf6; --dim: #8892b0;
+      --user: #1e3a5f; --ai: #1e2540;
+      --tip: #2a3a2a; --tip-text: #7ecf7e;
+      --red: #f44747; --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 8px;
+    }
+    header h1 { font-size: 1rem; font-weight: 600; white-space: nowrap; }
+    header h1 span { color: var(--accent); }
+    .hdr-right { display: flex; gap: 8px; align-items: center; }
+
+    .tog { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .tog button {
+      background: var(--surface2); border: none; color: var(--dim);
+      padding: 5px 10px; font-size: .8rem; cursor: pointer; transition: all .2s;
+    }
+    .tog button.on { background: var(--accent); color: #fff; }
+    .tog button:hover:not(.on) { color: var(--text); }
+
+    select.sc {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 5px 8px; border-radius: 8px;
+      font-size: .85rem; cursor: pointer; outline: none;
+    }
+    select.sc:focus { border-color: var(--accent); }
+
+    .icon-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--dim); width: 34px; height: 34px; border-radius: 8px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all .2s; flex-shrink: 0;
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Settings ── */
+    #spanel {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 14px 16px; display: none; flex-direction: column; gap: 10px; flex-shrink: 0;
+    }
+    #spanel.open { display: flex; }
+    .srow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .srow label { font-size: .83rem; color: var(--dim); min-width: 80px; }
+    .srow input[type="password"], .srow select {
+      flex: 1; min-width: 160px; background: var(--surface2);
+      border: 1px solid var(--border); color: var(--text);
+      padding: 6px 10px; border-radius: 8px; font-size: .88rem; outline: none;
+    }
+    .srow input:focus, .srow select:focus { border-color: var(--accent); }
+    .sbtn {
+      background: var(--accent); color: #fff; border: none;
+      padding: 7px 14px; border-radius: 8px; cursor: pointer;
+      font-size: .88rem; white-space: nowrap; transition: background .2s;
+    }
+    .sbtn:hover { background: var(--accent2); }
+    .snote { font-size: .76rem; color: var(--dim); }
+    .snote a { color: var(--accent); }
+
+    /* ── Main Content ── */
+    #main { flex: 1; overflow: hidden; position: relative; display: flex; }
+
+    /* ── Pages ── */
+    .page { position: absolute; inset: 0; display: none; flex-direction: column; }
+    .page.active { display: flex; }
+
+    /* ── Practice Page ── */
+    #chat {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    #chat::-webkit-scrollbar { width: 5px; }
+    #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .msg { display: flex; flex-direction: column; max-width: 80%; animation: fi .2s ease; }
+    @keyframes fi { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+    .msg.user { align-self: flex-end; align-items: flex-end; }
+    .msg.ai   { align-self: flex-start; align-items: flex-start; }
+    .mlbl { font-size: .7rem; color: var(--dim); margin-bottom: 3px; padding: 0 3px; }
+    .bbl {
+      padding: 10px 14px; border-radius: var(--radius);
+      line-height: 1.6; font-size: .93rem; white-space: pre-wrap; word-break: break-word;
+    }
+    .msg.user .bbl { background: var(--user); border-bottom-right-radius: 4px; }
+    .msg.ai   .bbl { background: var(--ai); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .tipbox {
+      margin-top: 6px; background: var(--tip); border: 1px solid #3a5a3a;
+      border-radius: 10px; padding: 7px 11px; font-size: .83rem; color: var(--tip-text);
+    }
+    .spkbtn {
+      margin-top: 5px; background: transparent; border: 1px solid var(--border);
+      color: var(--dim); padding: 3px 9px; border-radius: 6px;
+      font-size: .76rem; cursor: pointer; transition: all .2s;
+    }
+    .spkbtn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Practice Bar ── */
+    #practice-bar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 8px 16px; display: none; align-items: center;
+      justify-content: space-between; flex-shrink: 0; gap: 8px;
+    }
+    #pbar-info { font-size: .78rem; color: var(--dim); }
+    #pbar-info strong { color: var(--accent); }
+    #pbar-stop {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      padding: 4px 10px; border-radius: 6px; font-size: .78rem;
+      cursor: pointer; transition: all .15s; white-space: nowrap; flex-shrink: 0;
+    }
+    #pbar-stop:hover { border-color: var(--red); color: var(--red); }
+
+    /* Script & Analysis message styles */
+    .script-msg .bbl { background: #181e3a; border-color: #3a4a80; }
+    .script-msg .mlbl { color: #7a8aff; }
+
+
+    /* Hint Box */
+    #hint-box {
+      display: none; background: var(--surface2);
+      border: 1px solid var(--accent); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 8px;
+    }
+    #hint-label { font-size: .7rem; color: var(--accent); font-weight: 600; margin-bottom: 5px; }
+    #hint-text { font-size: .9rem; color: var(--text); line-height: 1.6; }
+    .dots { display: flex; align-items: center; gap: 5px; padding: 14px 18px; }
+    .dot { width: 7px; height: 7px; background: var(--dim); border-radius: 50%; animation: bo .9s ease infinite; }
+    .dot:nth-child(2){animation-delay:.15s} .dot:nth-child(3){animation-delay:.3s}
+    @keyframes bo{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+    #empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 10px; color: var(--dim); text-align: center;
+      pointer-events: none; user-select: none;
+    }
+    #empty .ico { font-size: 2.8rem; }
+    #empty p { font-size: .9rem; line-height: 1.7; }
+    #bottom {
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: 10px 16px 14px; flex-shrink: 0;
+    }
+    #sbar { text-align: center; font-size: .8rem; color: var(--dim); min-height: 18px; margin-bottom: 8px; }
+    #sbar.L { color: var(--red); }
+    #sbar.S { color: var(--accent); }
+    #sbar.T { color: #f0c040; }
+    .mode-row { display: flex; justify-content: center; margin-bottom: 8px; }
+    .irow { display: flex; gap: 8px; align-items: center; }
+    #tinput {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 9px 12px; border-radius: 10px;
+      font-size: .92rem; outline: none;
+    }
+    #tinput:focus { border-color: var(--accent); }
+    #tinput::placeholder { color: var(--dim); }
+    #sbtn {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--dim);
+      width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      transition: all .2s; flex-shrink: 0;
+    }
+    #sbtn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #mbtn {
+      width: 50px; height: 50px; border-radius: 50%;
+      border: 2px solid var(--accent); background: var(--surface2);
+      color: var(--accent); font-size: 1.3rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s; flex-shrink: 0;
+    }
+    #mbtn:hover { background: var(--accent); color: #fff; }
+    #mbtn.rec {
+      background: var(--red); border-color: var(--red); color: #fff;
+      animation: pu 1.2s ease infinite;
+    }
+    @keyframes pu{0%,100%{box-shadow:0 0 0 3px rgba(244,71,71,.2)}50%{box-shadow:0 0 0 9px rgba(244,71,71,.05)}}
+    #cbtn {
+      background: transparent; border: 1px solid var(--border); color: var(--dim);
+      padding: 7px 12px; border-radius: 8px; font-size: .8rem; cursor: pointer;
+      transition: all .2s; white-space: nowrap; flex-shrink: 0;
+    }
+    #cbtn:hover { color: var(--red); border-color: var(--red); }
+
+    /* ── Library Page ── */
+    #page-library { flex-direction: row; overflow: hidden; }
+
+    /* List View */
+    #lib-list-view {
+      display: flex; flex-direction: column; overflow: hidden;
+      width: 100%; flex-shrink: 0; transition: transform .3s ease;
+    }
+    #lib-list-hdr {
+      padding: 14px 16px 10px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #lib-list-hdr h2 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+    #lib-search {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 12px; border-radius: 10px;
+      font-size: .88rem; outline: none;
+    }
+    #lib-search:focus { border-color: var(--accent); }
+    #lib-search::placeholder { color: var(--dim); }
+    #lib-body {
+      flex: 1; overflow-y: auto; padding: 12px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #lib-body::-webkit-scrollbar { width: 5px; }
+    #lib-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .lib-empty { color: var(--dim); font-size: .86rem; text-align: center; padding: 40px 0; }
+
+    /* Lesson Cards */
+    .lcard {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .lcard:hover, .lcard.active { border-color: var(--accent); background: #1e2240; }
+    .lcard-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .lcard-info { flex: 1; min-width: 0; }
+    .lcard-name { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lcard-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .badge {
+      font-size: .68rem; padding: 2px 7px; border-radius: 4px;
+      border: 1px solid var(--border); color: var(--dim); white-space: nowrap;
+    }
+    .badge.has { color: var(--tip-text); border-color: #3a5a3a; background: #1e2e1e; }
+    .lcard-arrow { color: var(--dim); font-size: 1.1rem; flex-shrink: 0; }
+
+    /* Detail View */
+    #lib-detail-view {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      background: var(--bg);
+      transform: translateX(100%); transition: transform .3s ease;
+    }
+    #lib-detail-view.open { transform: translateX(0); }
+
+    #lib-det-hdr {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; background: var(--surface);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    #lib-back-btn {
+      background: none; border: none; color: var(--accent);
+      font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 4px; flex-shrink: 0;
+    }
+    #lib-det-title { font-weight: 600; font-size: .95rem; flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    #lib-det-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    #lib-det-body::-webkit-scrollbar { width: 5px; }
+    #lib-det-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── 自訂音訊播放器 ── */
+    #ap-wrap {
+      display: none; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px; flex-direction: column; gap: 10px;
+    }
+    #ap-wrap.on { display: flex; }
+    #ap-btns { display: flex; align-items: center; justify-content: center; gap: 16px; }
+    .ap-skip {
+      background: none; border: none; color: var(--dim); font-size: .75rem;
+      cursor: pointer; display: flex; flex-direction: column; align-items: center;
+      gap: 2px; padding: 4px 6px; border-radius: 8px; transition: color .15s;
+      line-height: 1;
+    }
+    .ap-skip:hover { color: var(--text); }
+    .ap-skip .skip-icon { font-size: 1.1rem; }
+    #ap-play {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--accent); border: none; color: #fff;
+      font-size: 1.3rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s, transform .1s;
+      flex-shrink: 0;
+    }
+    #ap-play:hover { background: var(--accent2); transform: scale(1.06); }
+    #ap-ver { display: none; justify-content: center; gap: 8px; margin-bottom: 6px; }
+    #ap-ver.on { display: flex; }
+    .ap-ver-btn { padding: 4px 16px; border-radius: 20px; font-size: .78rem; border: 1px solid var(--border); background: transparent; color: var(--dim); cursor: pointer; transition: all .15s; }
+    .ap-ver-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    #ap-row { display: flex; align-items: center; gap: 10px; }
+    .ap-time { font-size: .75rem; color: var(--dim); min-width: 36px; font-variant-numeric: tabular-nums; }
+    #ap-bar-wrap {
+      flex: 1; height: 4px; background: var(--border); border-radius: 2px;
+      cursor: pointer; position: relative; transition: height .15s;
+    }
+    #ap-bar-wrap:hover { height: 6px; }
+    #ap-bar-fill {
+      height: 100%; background: var(--accent); border-radius: 2px;
+      width: 0%; pointer-events: none;
+    }
+    #ap-bar-thumb {
+      position: absolute; top: 50%; right: -6px; transform: translateY(-50%);
+      width: 12px; height: 12px; background: #fff; border-radius: 50%;
+      box-shadow: 0 0 0 2px var(--accent); opacity: 0; transition: opacity .15s;
+      pointer-events: none;
+    }
+    #ap-bar-wrap:hover #ap-bar-thumb { opacity: 1; }
+
+    /* Tabs */
+    #lib-tabs { display: flex; gap: 8px; flex-shrink: 0; }
+    .ltab {
+      padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--dim); font-size: .85rem; cursor: pointer;
+      transition: all .2s;
+    }
+    .ltab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .ltab-panel { display: none; font-size: .88rem; line-height: 1.8; color: var(--text); }
+    .ltab-panel.active { display: block; }
+    .ltab-panel .txt-title {
+      font-size: 1rem; font-weight: 700; color: var(--accent2);
+      margin-bottom: 12px; display: block;
+    }
+    .ltab-panel .txt-line { margin-bottom: 4px; white-space: pre-wrap; }
+    .ltab-panel .vocab-header {
+      color: var(--accent); font-weight: 700; font-size: .88rem;
+      margin: 14px 0 6px; display: block;
+    }
+    .ltab-panel .vocab-table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-bottom: 8px; }
+    .ltab-panel .vocab-table td { padding: 6px 10px; vertical-align: top; border-bottom: 1px solid var(--border); }
+    .ltab-panel .vocab-table tr:first-child td { border-top: 1px solid var(--border); }
+    .ltab-panel .vc-word { font-weight: 600; white-space: nowrap; }
+    .ltab-panel .vc-type { color: var(--dim); font-style: italic; white-space: nowrap; }
+    .ltab-panel .vc-def  { color: var(--text); }
+    .vc-speak {
+      background: none; border: none; cursor: pointer;
+      color: var(--dim); font-size: .85rem; padding: 1px 4px;
+      border-radius: 4px; transition: color .15s; vertical-align: middle;
+      margin-left: 4px; line-height: 1;
+    }
+    .vc-speak:hover { color: var(--accent); }
+
+    #lib-det-footer {
+      padding: 12px 16px; background: var(--surface);
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    #lib-practice-btn {
+      width: 100%; padding: 14px; background: var(--accent);
+      color: #fff; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s;
+    }
+    #lib-practice-btn:hover { background: var(--accent2); }
+    #lib-practice-btn:disabled { opacity: .4; cursor: default; }
+
+    /* iPad landscape: side by side */
+    @media (min-width: 700px) {
+      #lib-list-view { width: 300px; border-right: 1px solid var(--border); }
+      #lib-detail-view {
+        position: relative; transform: none !important;
+        flex: 1; border-left: none;
+      }
+      #lib-back-btn { display: none; }
+    }
+
+    /* ── Bottom Nav ── */
+    #bottom-nav {
+      display: flex; background: var(--surface);
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .nav-btn {
+      flex: 1; padding: 10px 8px 12px; background: none; border: none;
+      color: var(--dim); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      transition: color .2s; font-size: .7rem;
+    }
+    .nav-btn .nav-icon { font-size: 1.4rem; line-height: 1; }
+    .nav-btn.active { color: var(--accent); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 70px; left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: #2a2d3e; border: 1px solid var(--border); color: var(--text);
+      padding: 8px 16px; border-radius: 8px; font-size: .84rem;
+      opacity: 0; transition: all .25s; pointer-events: none;
+      z-index: 500; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── RPM Bar ── */
+    #rpmbar { text-align: center; font-size: .72rem; color: var(--dim); margin-bottom: 4px; }
+
+    /* ── 角色選擇 Modal ── */
+    #role-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 600;
+      align-items: center; justify-content: center;
+    }
+    #role-modal.open { display: flex; }
+    #role-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 20px;
+      max-width: 360px; width: 92%; display: flex; flex-direction: column; gap: 14px;
+    }
+    #role-box h3 { font-size: 1rem; color: var(--text); }
+    #role-box .role-lesson { font-size: .8rem; color: var(--dim); }
+    #role-btns { display: flex; gap: 10px; }
+    .role-btn {
+      flex: 1; padding: 16px 10px; font-size: 1.1rem; font-weight: 700;
+      border-radius: 10px; border: 2px solid var(--border);
+      cursor: pointer; background: var(--surface2); color: var(--text); transition: all .2s;
+    }
+    .role-btn:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
+    #role-instruction {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); padding: 7px 10px; border-radius: 8px;
+      font-size: .86rem; outline: none;
+    }
+    #role-instruction:focus { border-color: var(--accent); }
+    #role-cancel {
+      background: transparent; border: 1px solid var(--border); color: var(--dim);
+      padding: 7px; border-radius: 8px; cursor: pointer; font-size: .85rem;
+    }
+    #role-cancel:hover { color: var(--text); }
+    #role-shadow {
+      width: 100%; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
+      cursor: pointer; background: var(--surface2); color: var(--dim); font-size: .88rem; transition: all .2s;
+    }
+    #role-shadow:hover { border-color: #7ecf7e; color: #7ecf7e; }
+    /* 評分點 */
+    .score-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: middle; flex-shrink: 0; }
+    .score-good { background: #4caf50; }
+    .score-tip  { background: #ff9800; }
+    /* 練習操作按鈕列 */
+    .prac-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .prac-btn { padding: 6px 16px; border-radius: 8px; font-size: .82rem; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; transition: all .15s; }
+    .prac-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .prac-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .prac-btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+    /* 提示切換 */
+    #hint-reveal { font-size: .78rem; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 2px 10px; cursor: pointer; margin-top: 6px; display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎙 AI <span id="llbl">英文</span>口說練習 <span style="font-size:.65rem;color:var(--dim);font-weight:400;">v2.3.0</span></h1>
+  <div class="hdr-right">
+    <div class="tog" id="ltog">
+      <button data-lang="en" class="on">🇺🇸 EN</button>
+      <button data-lang="ja" disabled style="opacity:.35;cursor:not-allowed;">🇯🇵 JP</button>
+    </div>
+    <select id="sc" class="sc"></select>
+    <button class="icon-btn" id="stbtn">⚙️</button>
+  </div>
+</header>
+
+<div id="spanel">
+  <div class="srow">
+    <label>API Key</label>
+    <input type="password" id="akey" placeholder="貼上 Gemini API Key..." />
+    <button class="sbtn" id="savekey">儲存</button>
+  </div>
+  <div class="srow">
+    <label>模型</label>
+    <select id="msel"><option value="">-- 請先查詢 --</option></select>
+    <button class="sbtn" id="listm">查詢模型</button>
+  </div>
+  <div class="srow">
+    <label>語速</label>
+    <input type="range" id="rslider" min="0.5" max="1.5" step="0.1" value="0.9"
+      style="flex:1;accent-color:var(--accent);" />
+    <span id="rlbl" style="min-width:28px;font-size:.83rem;color:var(--dim);">0.9x</span>
+  </div>
+  <div class="srow">
+    <label>AI 語音</label>
+    <select id="vsel"><option value="">自動</option></select>
+  </div>
+  <p class="snote">取得免費 API Key：<a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>。Key 只存在瀏覽器。</p>
+</div>
+
+<!-- Main Content -->
+<div id="main">
+
+  <!-- Page: Practice -->
+  <div id="page-practice" class="page active">
+    <div id="practice-bar">
+      <span id="pbar-info"></span>
+      <button id="pbar-stop">✕ 結束練習</button>
+    </div>
+    <div id="chat">
+      <div id="empty">
+        <div class="ico">🎙️</div>
+        <p id="ehint">按下麥克風，開始說英文<br/>AI 會回應並幫你糾正</p>
+      </div>
+    </div>
+    <div id="bottom">
+      <div id="sbar">請先在設定中填入 Gemini API Key</div>
+      <div id="hint-box">
+        <div id="hint-label"></div>
+        <div id="hint-text"></div>
+        <button id="hint-reveal">🙈 隱藏提示</button>
+      </div>
+      <div id="rpmbar"></div>
+      <div class="mode-row">
+        <div class="tog" id="mtog">
+          <button data-mode="auto" class="on">⚡ 自動送出</button>
+          <button data-mode="manual">✋ 手動停止</button>
+        </div>
+      </div>
+      <div class="irow">
+        <button id="mbtn">🎤</button>
+        <input type="text" id="tinput" placeholder="或直接打字..." />
+        <button id="sbtn">➤</button>
+        <button id="cbtn">清除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: Library -->
+  <div id="page-library" class="page">
+
+    <!-- List View -->
+    <div id="lib-list-view">
+      <div id="lib-list-hdr">
+        <h2>📚 教材庫</h2>
+        <input type="text" id="lib-search" placeholder="🔍 搜尋課程..." />
+      </div>
+      <div id="lib-body">
+        <div class="lib-empty" id="lib-empty">載入中...</div>
+      </div>
+    </div>
+
+    <!-- Detail View (slides in on mobile, always visible on tablet) -->
+    <div id="lib-detail-view">
+      <div id="lib-det-hdr">
+        <button id="lib-back-btn">‹</button>
+        <span id="lib-det-title">選擇一堂課</span>
+      </div>
+      <div id="lib-det-body">
+        <audio id="lib-audio"></audio>
+        <div id="ap-ver">
+          <button class="ap-ver-btn on" id="ap-ver-pb">🎧 完整版</button>
+          <button class="ap-ver-btn" id="ap-ver-dg">📖 對話版</button>
+        </div>
+        <div id="ap-wrap">
+          <div id="ap-btns">
+            <button class="ap-skip" id="ap-back"><span class="skip-icon">⏮</span>10s</button>
+            <button id="ap-play">▶</button>
+            <button class="ap-skip" id="ap-fwd">10s<span class="skip-icon">⏭</span></button>
+          </div>
+          <div id="ap-row">
+            <span class="ap-time" id="ap-cur">0:00</span>
+            <div id="ap-bar-wrap">
+              <div id="ap-bar-fill"></div>
+              <div id="ap-bar-thumb"></div>
+            </div>
+            <span class="ap-time" id="ap-dur">0:00</span>
+          </div>
+        </div>
+        <div id="lib-tabs" style="display:none;">
+          <button class="ltab on" data-tab="dialogue">📖 課文</button>
+          <button class="ltab" data-tab="vocab">📚 單字</button>
+        </div>
+        <div id="lib-dialogue" class="ltab-panel active"></div>
+        <div id="lib-vocab" class="ltab-panel"></div>
+        <div id="lib-det-placeholder" style="color:var(--dim);font-size:.9rem;text-align:center;padding:40px 0;">
+          ← 從左側選擇一堂課
+        </div>
+      </div>
+      <div id="lib-det-footer" style="display:none;">
+        <button id="lib-practice-btn">🎯 開始練習這堂課</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<nav id="bottom-nav">
+  <button class="nav-btn active" data-page="practice">
+    <span class="nav-icon">🎙</span>
+    <span>練習</span>
+  </button>
+  <button class="nav-btn" data-page="library">
+    <span class="nav-icon">📚</span>
+    <span>教材庫</span>
+  </button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- 角色選擇 Modal -->
+<div id="role-modal">
+  <div id="role-box">
+    <h3>選擇你的角色</h3>
+    <div class="role-lesson" id="role-lesson-name"></div>
+    <div id="role-btns">
+      <button class="role-btn" id="role-a">A:</button>
+      <button class="role-btn" id="role-b">B:</button>
+    </div>
+    <button id="role-shadow">🎧 跟讀模式 — 跟著唸每一句</button>
+    <input type="text" id="role-instruction" placeholder="額外練習指令（選填）例：用較慢語速" />
+    <button id="role-cancel">取消</button>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  /* ── 狀態 ── */
+  let apiKey   = localStorage.getItem('ak')  || '';
+  let model    = localStorage.getItem('mdl') || '';
+  let rate     = parseFloat(localStorage.getItem('rate') || '0.9');
+  let voice    = localStorage.getItem('vc')  || '';
+  let lang     = localStorage.getItem('lg')  || 'en';
+  let micMode  = localStorage.getItem('mm')  || 'auto';
+  let history  = [];
+  let recog    = null;
+  let listening = false;
+  let accumulated = '';
+  let retryTimer = null;
+  let lastRequestTime = 0;
+  let materialText = '';
+  let myRole = '';
+  let currentLesson = null;
+  let scriptLines = [];   // [{role:'A', text:'...'}]
+  let scriptIdx = 0;
+  let practiceActive = false;
+  let pendingExpected = '';
+  let shadowMode = false;
+  const MIN_INTERVAL_MS = 4000;
+  const RPM_LIMIT = 15;
+  let requestTimestamps = [];
+
+  /* ── DOM ── */
+  const D = id => document.getElementById(id);
+  const chat    = D('chat');
+  const empty   = D('empty');
+  const ehint   = D('ehint');
+  const sbar    = D('sbar');
+  const mbtn    = D('mbtn');
+  const tinput  = D('tinput');
+  const sbtn    = D('sbtn');
+  const cbtn    = D('cbtn');
+  const stbtn   = D('stbtn');
+  const spanel  = D('spanel');
+  const akey    = D('akey');
+  const savekey = D('savekey');
+  const rslider = D('rslider');
+  const rlbl    = D('rlbl');
+  const vsel    = D('vsel');
+  const msel    = D('msel');
+  const sc      = D('sc');
+  const llbl    = D('llbl');
+  const toastEl = D('toast');
+  const ltog    = D('ltog');
+  const mtog    = D('mtog');
+  const libBody    = D('lib-body');
+  const libEmpty   = D('lib-empty');
+  const libAudio   = D('lib-audio');
+  const libDetTitle = D('lib-det-title');
+  const libDialogue = D('lib-dialogue');
+  const libVocab    = D('lib-vocab');
+  const libDetailView = D('lib-detail-view');
+  const libListView   = D('lib-list-view');
+  const roleModal   = D('role-modal');
+
+  /* ── 工具 ── */
+  function ss(txt, cls='') { sbar.textContent=txt; sbar.className=cls; }
+  let tt;
+  function toast(m) {
+    toastEl.textContent=m; toastEl.classList.add('show');
+    clearTimeout(tt); tt=setTimeout(()=>toastEl.classList.remove('show'),2500);
+  }
+  function aiName()  { return lang==='en'?'Alex':'Yuki'; }
+  function recLang() { return lang==='en'?'en-US':'ja-JP'; }
+  function readyMsg(){ return lang==='en'?'點擊麥克風開始說英文 🎤':'マイクを押して話してください 🎤'; }
+  /* ── 底部導航 ── */
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      D('page-' + btn.dataset.page).classList.add('active');
+    });
+  });
+
+  /* ── RPM ── */
+  const rpmbar = D('rpmbar');
+  function trackRequest(){
+    const now = Date.now();
+    requestTimestamps = requestTimestamps.filter(t => now - t < 60000);
+    requestTimestamps.push(now);
+    updateRPM();
+  }
+  function updateRPM(){
+    const now = Date.now();
+    requestTimestamps = requestTimestamps.filter(t => now - t < 60000);
+    const used = requestTimestamps.length;
+    const remain = RPM_LIMIT - used;
+    if(used === 0){ rpmbar.textContent=''; return; }
+    const pct = used / RPM_LIMIT;
+    const color = pct >= 1 ? '#f44747' : pct >= 0.7 ? '#f0c040' : '#7ecf7e';
+    rpmbar.innerHTML = `<span style="color:${color}">API 用量：${used}/${RPM_LIMIT} 次/分鐘${ remain <= 3 ? '　⚠️ 快到上限' : '' }</span>`;
+  }
+  setInterval(updateRPM, 10000);
+
+  /* ── PDF 工具 ── */
+  if(typeof pdfjsLib !== 'undefined')
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  async function extractPdfText(pdf){
+    const pageLines = [];
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const items = content.items.filter(it=>it.str.trim());
+      if(!items.length) continue;
+      const groups = [];
+      for(const it of items){
+        const y = Math.round(it.transform[5]);
+        const g = groups.find(g=>Math.abs(g.y-y)<3);
+        if(g){ g.parts.push({x:it.transform[4], s:it.str, w:it.width||0}); }
+        else { groups.push({y, parts:[{x:it.transform[4], s:it.str, w:it.width||0}]}); }
+      }
+      groups.sort((a,b)=>b.y-a.y);
+      const gaps = groups.slice(1).map((g,i)=>groups[i].y-g.y).filter(d=>d>0);
+      const medGap = gaps.length ? gaps.slice().sort((a,b)=>a-b)[Math.floor(gaps.length/2)] : 12;
+      let prevY = null;
+      for(const g of groups){
+        const sorted = g.parts.sort((a,b)=>a.x-b.x);
+        let line = sorted[0].s;
+        for(let j=1;j<sorted.length;j++){
+          const prev = sorted[j-1], curr = sorted[j];
+          // 若前一項有寬度資訊，用實際間距判斷是否補空格；否則比較字元估算
+          const gap = curr.x - (prev.x + (prev.w > 0 ? prev.w : prev.s.length * 5));
+          if(gap > 1 && !line.endsWith(' ') && !curr.s.startsWith(' ')) line += ' ';
+          line += curr.s;
+        }
+        line = line.replace(/\s+/g,' ').trim();
+        if(prevY!==null && (prevY-g.y) > medGap*1.8) pageLines.push('');
+        pageLines.push(line);
+        prevY = g.y;
+      }
+      pageLines.push('');
+    }
+    return pageLines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  const NOISE_PATTERNS = [
+    /visit\s*the\s*online\s*review/i, /text\s*version/i, /praxis\s*language/i,
+    /englishpod/i, /learn\s*english\s*on\s*your\s*terms/i,
+    /©|copyright|\(c\)\s*\d{4}|(cid:\d+)/i, /^https?:\/\//i,
+  ];
+  function cleanPdfText(raw){
+    const lines = raw.split('\n');
+    const result = lines.filter(l => !NOISE_PATTERNS.some(p => p.test(l.trim())));
+    return result.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  // \s* 處理 PDF.js 可能漏掉空格的情況（KeyVocabulary vs Key Vocabulary）
+  const VOCAB_SECTION_RE = /^(?:key\s*vocabulary|supplementary\s*vocabulary|vocabulary)\s*:?\s*$/i;
+  const VOCAB_TYPE_RE = /^(.+?)\s+(Noun|Verb|Adjective|Adverb|Phrase|Idiom|Expression|Pronoun|Conjunction|Preposition|Interjection|Article|Determiner)\s+(.+)$/i;
+
+  function renderLesson(text){
+    libDialogue.innerHTML = ''; libVocab.innerHTML = '';
+    const lines = text.split('\n');
+    const titleIdx = lines.findIndex(l=>l.trim());
+    if(titleIdx >= 0){
+      const t = document.createElement('span');
+      t.className = 'txt-title'; t.textContent = lines[titleIdx].trim();
+      libDialogue.appendChild(t);
+    }
+    let mode = 'dialogue', vocabTable = null, lastDefCell = null;
+    for(let i = titleIdx+1; i < lines.length; i++){
+      const trimmed = lines[i].trim();
+      if(!trimmed) continue;
+      if(VOCAB_SECTION_RE.test(trimmed)){
+        mode = 'vocab'; lastDefCell = null;
+        const h = document.createElement('span');
+        h.className = 'vocab-header'; h.textContent = trimmed;
+        libVocab.appendChild(h);
+        vocabTable = document.createElement('table');
+        vocabTable.className = 'vocab-table';
+        libVocab.appendChild(vocabTable);
+        continue;
+      }
+      if(mode === 'vocab'){
+        const m = trimmed.match(VOCAB_TYPE_RE);
+        if(m && vocabTable){
+          const tr = document.createElement('tr');
+          lastDefCell = null;
+          const word = m[1].trim();
+          [{cls:'vc-word',val:word},{cls:'vc-type',val:m[2].trim()},{cls:'vc-def',val:m[3].trim()}]
+            .forEach(c=>{
+              const td=document.createElement('td'); td.className=c.cls;
+              if(c.cls==='vc-word'){
+                td.textContent=c.val;
+                const btn=document.createElement('button'); btn.className='vc-speak';
+                btn.textContent='🔊'; btn.title='發音';
+                btn.addEventListener('click', e=>{ e.stopPropagation(); speakWord(word); });
+                td.appendChild(btn);
+              } else {
+                td.textContent=c.val;
+              }
+              if(c.cls==='vc-def') lastDefCell = td;
+              tr.appendChild(td);
+            });
+          vocabTable.appendChild(tr);
+        } else if(lastDefCell){
+          // 定義跨行時，接續到上一個單字的定義欄
+          lastDefCell.textContent += ' ' + trimmed;
+        }
+        continue;
+      }
+      const d = document.createElement('div');
+      d.className = 'txt-line'; d.textContent = trimmed;
+      libDialogue.appendChild(d);
+    }
+    // 重設到課文頁
+    document.querySelectorAll('.ltab').forEach((b,i)=>b.classList.toggle('on',i===0));
+    libDialogue.classList.add('active'); libVocab.classList.remove('active');
+  }
+
+  // 對話區：從 TXT 乾淨版渲染（只有 A:/B: 台詞）
+  function renderDialogueFromTxt(txt){
+    libDialogue.innerHTML = '';
+    const lines = txt.split('\n');
+    const titleIdx = lines.findIndex(l=>l.trim());
+    if(titleIdx >= 0){
+      const t = document.createElement('span');
+      t.className = 'txt-title'; t.textContent = lines[titleIdx].trim();
+      libDialogue.appendChild(t);
+    }
+    for(let i = titleIdx+1; i < lines.length; i++){
+      const trimmed = lines[i].trim();
+      if(!trimmed) continue;
+      const d = document.createElement('div');
+      d.className = 'txt-line'; d.textContent = trimmed;
+      libDialogue.appendChild(d);
+    }
+    document.querySelectorAll('.ltab').forEach((b,i)=>b.classList.toggle('on',i===0));
+    libDialogue.classList.add('active'); libVocab.classList.remove('active');
+  }
+
+  // 單字區：從 PDF 清理後文字中只取單字段落渲染
+  function renderVocabFromPdf(text){
+    libVocab.innerHTML = '';
+    const lines = text.split('\n');
+    let inVocab = false, vocabTable = null, lastDefCell = null;
+    for(const line of lines){
+      const trimmed = line.trim();
+      if(!trimmed) continue;
+      if(VOCAB_SECTION_RE.test(trimmed)){
+        inVocab = true; lastDefCell = null;
+        const h = document.createElement('span');
+        h.className = 'vocab-header'; h.textContent = trimmed;
+        libVocab.appendChild(h);
+        vocabTable = document.createElement('table');
+        vocabTable.className = 'vocab-table';
+        libVocab.appendChild(vocabTable);
+        continue;
+      }
+      if(!inVocab) continue;
+      const m = trimmed.match(VOCAB_TYPE_RE);
+      if(m && vocabTable){
+        const tr = document.createElement('tr');
+        lastDefCell = null;
+        const word = m[1].trim();
+        [{cls:'vc-word',val:word},{cls:'vc-type',val:m[2].trim()},{cls:'vc-def',val:m[3].trim()}]
+          .forEach(c=>{
+            const td=document.createElement('td'); td.className=c.cls;
+            if(c.cls==='vc-word'){
+              td.textContent=c.val;
+              const btn=document.createElement('button'); btn.className='vc-speak';
+              btn.textContent='🔊'; btn.title='發音';
+              btn.addEventListener('click', e=>{ e.stopPropagation(); speakWord(word); });
+              td.appendChild(btn);
+            } else {
+              td.textContent=c.val;
+            }
+            if(c.cls==='vc-def') lastDefCell = td;
+            tr.appendChild(td);
+          });
+        vocabTable.appendChild(tr);
+      } else if(lastDefCell){
+        lastDefCell.textContent += ' ' + trimmed;
+      }
+    }
+  }
+
+
+  /* ── 情境 ── */
+  const SC = {
+    en:[
+      {v:'free',l:'🗣️ 自由對話'},{v:'interview',l:'💼 求職面試'},
+      {v:'restaurant',l:'🍽️ 餐廳點餐'},{v:'shopping',l:'🛒 購物'},
+      {v:'travel',l:'✈️ 旅遊'},{v:'phone',l:'📞 電話對話'},{v:'debate',l:'🎤 意見表達'},
+    ],
+    ja:[
+      {v:'free',l:'🗣️ 自由會話'},{v:'interview',l:'💼 就職面接'},
+      {v:'restaurant',l:'🍽️ レストラン'},{v:'shopping',l:'🛒 買い物'},
+      {v:'travel',l:'✈️ 旅行'},{v:'phone',l:'📞 電話対応'},{v:'anime',l:'🎌 アニメ風'},
+    ],
+  };
+
+  /* ── 語言切換 ── */
+  function setLang(l, silent) {
+    lang = l; localStorage.setItem('lg', l);
+    llbl.textContent = l==='en'?'英文':'日文';
+    ltog.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang===l));
+    sc.innerHTML = SC[l].map(s=>`<option value="${s.v}">${s.l}</option>`).join('');
+    ehint.innerHTML = l==='en'
+      ? '按下麥克風，開始說英文<br/>AI 會回應並幫你糾正'
+      : 'マイクを押して日本語を話してください<br/>AIが返答と添削をします';
+    refreshVoices(); clearChat();
+    if (!silent) toast(l==='en'?'切換至英文 🇺🇸':'日本語モードへ 🇯🇵');
+    ss(apiKey ? readyMsg() : '請先在設定中填入 Gemini API Key');
+  }
+  ltog.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{ if(b.dataset.lang!==lang) setLang(b.dataset.lang); });
+  });
+
+  /* ── 麥克風模式 ── */
+  function setMode(m) {
+    micMode = m; localStorage.setItem('mm', m);
+    mtog.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode===m));
+  }
+  mtog.querySelectorAll('button').forEach(b=>{ b.addEventListener('click',()=>setMode(b.dataset.mode)); });
+
+  /* ── 初始化 ── */
+  if (apiKey) akey.value = apiKey;
+  rslider.value = rate; rlbl.textContent = rate+'x';
+  if (model) msel.innerHTML = `<option value="${model}">${model}</option>`;
+  setLang(lang, true); setMode(micMode);
+
+  stbtn.addEventListener('click',()=>spanel.classList.toggle('open'));
+  savekey.addEventListener('click',()=>{
+    const v=akey.value.trim(); if(!v){toast('請輸入 API Key');return;}
+    apiKey=v; localStorage.setItem('ak',v);
+    spanel.classList.remove('open'); ss(readyMsg()); toast('API Key 已儲存 ✓');
+  });
+  rslider.addEventListener('input',()=>{ rate=parseFloat(rslider.value); rlbl.textContent=rate+'x'; localStorage.setItem('rate',rate); });
+  vsel.addEventListener('change',()=>{ voice=vsel.value; localStorage.setItem('vc',voice); });
+  msel.addEventListener('change',()=>{ model=msel.value; localStorage.setItem('mdl',model); if(model)toast('模型：'+model); });
+
+  D('listm').addEventListener('click', async()=>{
+    const k=akey.value.trim()||apiKey; if(!k){toast('請先填入 API Key');return;}
+    toast('查詢中...');
+    try{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${k}`);
+      const d=await r.json(); if(!r.ok)throw new Error(d?.error?.message||'HTTP '+r.status);
+      const ms=(d.models||[])
+        .filter(m=>m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m=>m.name.replace('models/',''))
+        .filter(n=>n.includes('gemini'));
+      if(!ms.length){toast('找不到可用模型');return;}
+      msel.innerHTML=ms.map((m,i)=>`<option value="${m}"${i===0?' selected':''}>${m}</option>`).join('');
+      model=ms[0]; localStorage.setItem('mdl',model);
+      toast(`找到 ${ms.length} 個，已選：${model}`);
+    }catch(e){toast('失敗：'+e.message);}
+  });
+
+  function refreshVoices(){
+    const prefix=lang==='en'?'en':'ja';
+    const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith(prefix));
+    vsel.innerHTML='<option value="">自動</option>'+
+      vs.map(v=>`<option value="${v.name}"${v.name===voice?' selected':''}>${v.name} (${v.lang})</option>`).join('');
+  }
+  speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+
+  /* ── Chat ── */
+  function clearChat(){
+    history=[]; speechSynthesis.cancel();
+    practiceActive=false; scriptLines=[]; scriptIdx=0; pendingExpected=''; myRole='';
+    D('practice-bar').style.display='none';
+    D('hint-box').style.display='none';
+    while(chat.firstChild) chat.removeChild(chat.firstChild);
+    empty.style.display=''; chat.appendChild(empty);
+  }
+  sc.addEventListener('change',()=>{ clearChat(); toast(sc.options[sc.selectedIndex].text); });
+  cbtn.addEventListener('click',()=>{ clearChat(); ss(apiKey?readyMsg():'請先在設定中填入 Gemini API Key'); toast('對話已清除'); });
+
+  /* ── System Prompt ── */
+  function getPrompt(){
+    const extraInstruction = (D('role-instruction')?.value||'').trim();
+    const s = sc.value;
+    if(materialText && myRole){
+      const aiRole = myRole === 'A' ? 'B' : 'A';
+      return `You are an English conversation coach running a role-play exercise.
+
+Role-play setup:
+- The lesson script below has A: and B: dialogue lines.
+- The USER plays "${myRole}:". YOU play "${aiRole}:".
+- Use the script as a guide but you may adapt naturally.
+
+After the user speaks, respond in TWO parts:
+
+1. "${aiRole}:" — your in-character reply (1–2 sentences following the script flow).
+
+2. Feedback — always analyze what the user just said:
+   - If pronunciation, grammar, or word choice could be improved: 💡 Tip: [specific correction and why]
+   - If it was correct and natural: ✓ Good: [brief encouragement noting what they did well]${extraInstruction ? '\n\nExtra instruction: '+extraInstruction : ''}
+
+Lesson script:
+---
+${materialText}
+---`;
+    }
+    const materialSection = materialText ? `\n\n---\nLesson material:\n${materialText}\n---` : '';
+    const instructionSection = extraInstruction ? `\n\nExtra instruction: ${extraInstruction}` : '';
+    if(lang==='en'){
+      const m={free:'casual friendly conversation',interview:'job interview — you are the interviewer',
+        restaurant:'restaurant — you are the waiter',shopping:'shopping — you are the store assistant',
+        travel:'travel (airport/hotel/tourist site) — you are staff',
+        phone:'phone call for appointments or inquiries',debate:'opinion discussion — challenge or agree respectfully'};
+      return `You are Alex, a friendly English conversation tutor.
+Scenario: ${m[s]||'general conversation'}
+Rules:
+1. Reply ONLY in English, 2–4 sentences.
+2. Stay in character.
+3. If the user made a grammar/vocabulary mistake, end with:
+   💡 Tip: [brief correction]
+   Otherwise omit this line.
+4. End with a follow-up question.${materialSection}${instructionSection}`;
+    } else {
+      const m={free:'日常的な雑談',interview:'就職面接（あなたは面接官）',restaurant:'レストラン（あなたはウェイター）',
+        shopping:'ショッピング（あなたは店員）',travel:'旅行・空港・ホテルのスタッフ',
+        phone:'電話対応（予約・問い合わせ）',anime:'アニメ・マンガ風の会話'};
+      return `あなたはYuki、親切な日本語会話の先生です。
+シナリオ：${m[s]||'日常会話'}
+ルール：
+1. 必ず日本語のみ、2〜4文。
+2. シナリオのキャラとして振る舞う。
+3. 誤りがあれば最後に：
+   💡 アドバイス：[修正・提案]
+   問題なければ省略。
+4. 質問で締める。${materialSection}${instructionSection}`;
+    }
+  }
+
+  /* ── Gemini API ── */
+  async function sendToAI(text, retryCount=0){
+    if(!apiKey){toast('請先設定 API Key ⚙️');spanel.classList.add('open');return;}
+    if(!model){toast('請先查詢並選擇模型 ⚙️');spanel.classList.add('open');return;}
+    if(retryCount === 0){ history.push({role:'user',parts:[{text}]}); addMsg('user',text); }
+    const now = Date.now();
+    if(now - lastRequestTime < MIN_INTERVAL_MS && retryCount === 0)
+      await new Promise(r => setTimeout(r, MIN_INTERVAL_MS - (now - lastRequestTime)));
+    lastRequestTime = Date.now(); trackRequest();
+    const typ=addTyping();
+    ss(lang==='en'?'AI is thinking...':'AIが考え中...','T');
+    try{
+      const res=await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {method:'POST',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({
+           system_instruction:{parts:[{text:getPrompt()}]},
+           contents:history,
+           generationConfig:{temperature:0.85,maxOutputTokens:400}
+         })}
+      );
+      if(!res.ok){const e=await res.json();throw new Error(e?.error?.message||'HTTP '+res.status);}
+      const d=await res.json();
+      const raw=d?.candidates?.[0]?.content?.parts?.[0]?.text||'...';
+      const re=lang==='en'?/💡\s*Tip:\s*(.+)/s:/💡\s*アドバイス[：:]\s*(.+)/s;
+      const tm=raw.match(re);
+      const main=raw.replace(re,'').trim(); const tip=tm?tm[1].trim():null;
+      history.push({role:'model',parts:[{text:raw}]});
+      typ.remove(); addMsg('ai',main,tip); speak(main);
+    }catch(e){
+      typ.remove();
+      if(retryTimer){ clearInterval(retryTimer); retryTimer=null; }
+      const MAX_RETRIES = 4;
+      const isRateLimit = e.message.includes('429') || /quota|rate|retry in/i.test(e.message);
+      if(isRateLimit && retryCount < MAX_RETRIES){
+        const suggested = parseFloat((e.message.match(/retry in ([\d.]+)s/i)||[])[1]||0);
+        const backoff = Math.pow(2, retryCount + 1);
+        const wait = Math.ceil(Math.max(suggested, backoff) + Math.random());
+        let remain = wait;
+        ss(`⏳ 請求限制，${remain}s 後重試（第 ${retryCount+1}/${MAX_RETRIES} 次）...`, 'T');
+        retryTimer = setInterval(()=>{
+          remain--;
+          if(remain <= 0){ clearInterval(retryTimer); retryTimer=null; sendToAI(text, retryCount+1); }
+          else ss(`⏳ 請求限制，${remain}s 後重試（第 ${retryCount+1}/${MAX_RETRIES} 次）...`, 'T');
+        }, 1000);
+      } else {
+        history.pop();
+        const msg = isRateLimit ? `⚠️ 已重試 ${MAX_RETRIES} 次仍失敗，請稍後再試` : '錯誤：'+e.message;
+        ss(msg); toast(msg);
+      }
+    }
+  }
+
+  /* ── Chat UI ── */
+  function addMsg(role,text,tip=null){
+    empty.style.display='none';
+    const wrap=document.createElement('div'); wrap.className='msg '+role;
+    const lbl=document.createElement('div'); lbl.className='mlbl';
+    lbl.textContent=role==='user'?'你':aiName()+' (AI)';
+    const bbl=document.createElement('div'); bbl.className='bbl'; bbl.textContent=text;
+    wrap.append(lbl,bbl);
+    if(tip){
+      const t=document.createElement('div'); t.className='tipbox';
+      t.innerHTML=`<strong>💡 ${lang==='en'?'Tip':'アドバイス'}：</strong>${tip}`;
+      const tb=document.createElement('button'); tb.className='spkbtn';
+      tb.style.marginLeft='6px'; tb.textContent='🔊'; tb.onclick=()=>speak(tip);
+      t.appendChild(tb); wrap.appendChild(t);
+    }
+    if(role==='ai'){
+      const b=document.createElement('button'); b.className='spkbtn';
+      b.textContent=lang==='en'?'🔊 再聽一次':'🔊 もう一度';
+      b.onclick=()=>speak(text); wrap.appendChild(b);
+    }
+    chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight;
+    ss(role==='user'?(lang==='en'?'AI is thinking...':'AIが考え中...'):readyMsg(), role==='user'?'T':'');
+  }
+
+  function addTyping(){
+    const w=document.createElement('div'); w.className='msg ai';
+    w.innerHTML=`<div class="mlbl">${aiName()} (AI)</div>
+      <div class="bbl dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+    chat.appendChild(w); chat.scrollTop=chat.scrollHeight; return w;
+  }
+
+  /* ── TTS ── */
+  function speakWord(word){
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(word);
+    u.lang='en-US'; u.rate=0.85;
+    const vs=speechSynthesis.getVoices();
+    const v=vs.find(v=>v.lang==='en-US')||vs.find(v=>v.lang.startsWith('en'));
+    if(v) u.voice=v;
+    speechSynthesis.speak(u);
+  }
+
+  function speak(text){
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=recLang(); u.rate=rate;
+    const vs=speechSynthesis.getVoices();
+    if(voice){ const v=vs.find(v=>v.name===voice); if(v)u.voice=v; }
+    else {
+      const p=lang==='en'?'en':'ja';
+      const v=vs.find(v=>v.lang===recLang())||vs.find(v=>v.lang.startsWith(p));
+      if(v)u.voice=v;
+    }
+    u.onstart=()=>ss(lang==='en'?'Alex is speaking...':'Yukiが話しています...','S');
+    u.onend=u.onerror=()=>ss(readyMsg());
+    speechSynthesis.speak(u);
+  }
+
+  /* ── Speech Recognition ── */
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(SR){
+    function makeRecog(){
+      if(recog){try{recog.abort();}catch(e){}}
+      recog=new SR();
+      recog.interimResults=true; recog.lang=recLang(); recog.continuous=(micMode==='manual');
+      recog.onstart=()=>{
+        listening=true; accumulated='';
+        mbtn.classList.add('rec'); mbtn.textContent='⏹';
+        const hint=micMode==='manual'
+          ?(lang==='en'?'🎤 Recording... press ⏹ to finish':'🎤 録音中...⏹で停止')
+          :(lang==='en'?'🎤 Listening...':'🎤 聞いています...');
+        ss(hint,'L');
+      };
+      recog.onresult=e=>{
+        let tmp='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          if(e.results[i].isFinal) accumulated+=e.results[i][0].transcript+' ';
+          else tmp=e.results[i][0].transcript;
+        }
+        tinput.value=(accumulated+tmp).trim();
+        ss(`🎤 "${tinput.value}"`, 'L');
+      };
+      recog.onend=()=>{
+        if(!listening) return;
+        listening=false; mbtn.classList.remove('rec'); mbtn.textContent='🎤';
+        const said=(accumulated||tinput.value).trim(); accumulated='';
+        if(!said){ tinput.value=''; ss(lang==='en'?'沒有偵測到聲音':'音声が検出されませんでした'); return; }
+        if(micMode==='manual'){
+          tinput.value=said; tinput.focus();
+          ss(lang==='en'?'確認後按 ➤ 送出，或修改內容':'確認後 ➤ を押して送信');
+        } else {
+          tinput.value='';
+          if(practiceActive && pendingExpected){
+            const exp=pendingExpected; pendingExpected='';
+            sendAnalysis(said, exp);
+          } else { sendToAI(said); }
+        }
+      };
+      recog.onerror=e=>{
+        listening=false; mbtn.classList.remove('rec'); mbtn.textContent='🎤';
+        const msgs={'no-speech':lang==='en'?'沒有偵測到說話':'音声なし',
+          'not-allowed':'麥克風權限被拒絕','audio-capture':'無法存取麥克風'};
+        ss(msgs[e.error]||e.error); toast(msgs[e.error]||e.error);
+      };
+    }
+    makeRecog();
+    ltog.querySelectorAll('button').forEach(b=>{ b.addEventListener('click',()=>setTimeout(makeRecog,150)); });
+    mtog.querySelectorAll('button').forEach(b=>{ b.addEventListener('click',()=>setTimeout(makeRecog,150)); });
+    mbtn.addEventListener('click',()=>{
+      if(!apiKey){toast('請先設定 API Key ⚙️');spanel.classList.add('open');return;}
+      if(listening){ recog.stop(); return; }
+      speechSynthesis.cancel(); tinput.value=''; accumulated='';
+      recog.lang=recLang(); recog.continuous=(micMode==='manual');
+      try{ recog.start(); }catch(e){ makeRecog(); setTimeout(()=>recog.start(),100); }
+    });
+  } else {
+    mbtn.disabled=true; mbtn.style.opacity='.35';
+    ss('請使用 Chrome 瀏覽器以支援語音功能');
+  }
+
+  /* ── 文字輸入 ── */
+  function doSend(){
+    const t=tinput.value.trim(); if(!t)return;
+    tinput.value=''; accumulated='';
+    if(listening){ listening=false; mbtn.classList.remove('rec'); mbtn.textContent='🎤'; try{recog.abort();}catch(e){} }
+    if(practiceActive && pendingExpected){
+      const exp=pendingExpected; pendingExpected='';
+      sendAnalysis(t, exp);
+    } else { sendToAI(t); }
+  }
+  sbtn.addEventListener('click',doSend);
+  tinput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();} });
+
+  /* ── 教材庫 ── */
+  let activeBlobUrl = null;
+
+  function formatLessonName(name){
+    return name.replace(/^englishpod_/i,'').replace(/_/g,' ').trim();
+  }
+
+  /* ── 自訂音訊播放器 ── */
+  const apWrap   = D('ap-wrap');
+  const apPlay   = D('ap-play');
+  const apBack   = D('ap-back');
+  const apFwd    = D('ap-fwd');
+  const apBarWrap= D('ap-bar-wrap');
+  const apFill   = D('ap-bar-fill');
+  const apThumb  = D('ap-bar-thumb');
+  const apCur    = D('ap-cur');
+  const apDur    = D('ap-dur');
+
+  function fmtTime(s){
+    if(!isFinite(s)||s<0) return '0:00';
+    const m=Math.floor(s/60), sec=Math.floor(s%60);
+    return m+':'+(sec<10?'0':'')+sec;
+  }
+  function updateBar(){
+    const pct = libAudio.duration ? (libAudio.currentTime/libAudio.duration)*100 : 0;
+    apFill.style.width = pct+'%';
+    apThumb.style.right = 'auto';
+    apThumb.style.left = 'calc('+pct+'% - 6px)';
+    apCur.textContent = fmtTime(libAudio.currentTime);
+  }
+  libAudio.addEventListener('timeupdate', updateBar);
+  libAudio.addEventListener('durationchange', ()=>{ apDur.textContent = fmtTime(libAudio.duration); });
+  libAudio.addEventListener('ended', ()=>{ apPlay.textContent='▶'; });
+  libAudio.addEventListener('play',  ()=>{ apPlay.textContent='⏸'; });
+  libAudio.addEventListener('pause', ()=>{ apPlay.textContent='▶'; });
+
+  apPlay.addEventListener('click', ()=>{
+    if(libAudio.paused) libAudio.play();
+    else libAudio.pause();
+  });
+  apBack.addEventListener('click', ()=>{ libAudio.currentTime = Math.max(0, libAudio.currentTime-10); });
+  apFwd.addEventListener('click',  ()=>{ libAudio.currentTime = Math.min(libAudio.duration||0, libAudio.currentTime+10); });
+
+  // 版本切換
+  D('ap-ver-pb').addEventListener('click', ()=>{
+    if(!currentLesson?.mp3_pb) return;
+    D('ap-ver-pb').classList.add('on'); D('ap-ver-dg').classList.remove('on');
+    loadAudio(currentLesson.mp3_pb);
+  });
+  D('ap-ver-dg').addEventListener('click', ()=>{
+    if(!currentLesson?.mp3_dg) return;
+    D('ap-ver-dg').classList.add('on'); D('ap-ver-pb').classList.remove('on');
+    loadAudio(currentLesson.mp3_dg);
+  });
+
+  apBarWrap.addEventListener('click', e=>{
+    if(!libAudio.duration) return;
+    const rect = apBarWrap.getBoundingClientRect();
+    libAudio.currentTime = ((e.clientX - rect.left) / rect.width) * libAudio.duration;
+  });
+
+  // 拖曳進度條
+  let apDragging = false;
+  apBarWrap.addEventListener('mousedown', e=>{ apDragging=true; });
+  document.addEventListener('mousemove', e=>{
+    if(!apDragging||!libAudio.duration) return;
+    const rect = apBarWrap.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    libAudio.currentTime = pct * libAudio.duration;
+  });
+  document.addEventListener('mouseup', ()=>{ apDragging=false; });
+
+  // 觸控支援
+  apBarWrap.addEventListener('touchstart', e=>{ apDragging=true; e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchmove', e=>{
+    if(!apDragging||!libAudio.duration) return;
+    const rect = apBarWrap.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.touches[0].clientX-rect.left)/rect.width));
+    libAudio.currentTime = pct * libAudio.duration;
+  });
+  document.addEventListener('touchend', ()=>{ apDragging=false; });
+
+  function loadAudio(src){
+    libAudio.pause();
+    libAudio.src = src;
+    apPlay.textContent = '▶';
+    apFill.style.width = '0%';
+    apCur.textContent = '0:00'; apDur.textContent = '0:00';
+    apWrap.classList.add('on');
+    apWrap.dataset.errShown = '';
+  }
+  function unloadAudio(){
+    libAudio.pause(); libAudio.src='';
+    apWrap.classList.remove('on');
+  }
+  libAudio.addEventListener('error', ()=>{
+    if(!libAudio.src || apWrap.dataset.errShown) return;
+    apWrap.dataset.errShown = '1';
+    apPlay.textContent = '▶';
+    apCur.textContent = '–:––'; apDur.textContent = '–:––';
+    apFill.style.width = '0%';
+    toast('⚠️ 音檔無法載入');
+  });
+
+  // Tab 切換
+  D('lib-tabs').addEventListener('click', e=>{
+    const btn = e.target.closest('.ltab'); if(!btn) return;
+    document.querySelectorAll('.ltab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.ltab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('on');
+    D('lib-'+btn.dataset.tab).classList.add('active');
+  });
+
+  // 搜尋過濾
+  D('lib-search').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.lcard').forEach(card=>{
+      card.style.display = card.dataset.name.includes(q) ? '' : 'none';
+    });
+  });
+
+  // 返回列表（行動裝置）
+  D('lib-back-btn').addEventListener('click', ()=>{
+    libDetailView.classList.remove('open');
+    document.querySelectorAll('.lcard').forEach(c=>c.classList.remove('active'));
+  });
+
+  function buildLessonCards(lessons){
+    while(libBody.firstChild) libBody.removeChild(libBody.firstChild);
+    libEmpty.style.display='none';
+    const keys = Object.keys(lessons).sort();
+    for(const k of keys){
+      const ls = lessons[k];
+      const displayName = formatLessonName(ls.name);
+      const card = document.createElement('div');
+      card.className = 'lcard';
+      card.dataset.name = displayName.toLowerCase();
+
+      const icon = document.createElement('div');
+      icon.className = 'lcard-icon';
+      icon.textContent = (ls.mp3_pb || ls.mp3_dg) ? '🎵' : '📄';
+
+      const info = document.createElement('div');
+      info.className = 'lcard-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'lcard-name'; nameEl.textContent = displayName;
+      const badges = document.createElement('div');
+      badges.className = 'lcard-badges';
+      if(ls.mp3_pb){ const b=document.createElement('span'); b.className='badge has'; b.textContent='完整版'; badges.appendChild(b); }
+      if(ls.mp3_dg){ const b=document.createElement('span'); b.className='badge has'; b.textContent='對話版'; badges.appendChild(b); }
+      if(ls.pdf){ const b=document.createElement('span'); b.className='badge has'; b.textContent='PDF'; badges.appendChild(b); }
+      info.append(nameEl, badges);
+
+      const arrow = document.createElement('div');
+      arrow.className = 'lcard-arrow'; arrow.textContent = '›';
+
+      card.append(icon, info, arrow);
+      card.addEventListener('click', ()=>openLesson(ls, card));
+      libBody.appendChild(card);
+    }
+    if(!keys.length){ libEmpty.style.display=''; libEmpty.textContent='無教材'; }
+    return keys.length;
+  }
+
+  // 啟動時載入 manifest
+  (async()=>{
+    try{
+      const r = await fetch('./manifest.json');
+      if(!r.ok){ libEmpty.textContent='無法載入教材庫'; libEmpty.style.display=''; return; }
+      const data = await r.json();
+      const lessons = {};
+      for(const ls of (data.lessons||[])){
+        lessons[ls.name]={ name:ls.name, mp3_pb:ls.mp3_pb||null, mp3_dg:ls.mp3_dg||null, pdf:ls.pdf||null, txt:ls.txt||null, isLocal:false };
+      }
+      const n = buildLessonCards(lessons);
+      if(n) toast(`教材庫：${n} 堂課 📚`);
+    }catch(e){ libEmpty.textContent='無法載入教材庫'; libEmpty.style.display=''; }
+  })();
+
+  async function openLesson(ls, card){
+    document.querySelectorAll('.lcard').forEach(c=>c.classList.remove('active'));
+    card.classList.add('active');
+    libDetTitle.textContent = formatLessonName(ls.name);
+    currentLesson = ls;
+
+    // 顯示詳細頁（行動裝置：滑入）
+    libDetailView.classList.add('open');
+    D('lib-det-placeholder').style.display = 'none';
+
+    // MP3：預設完整版，有兩版才顯示切換列
+    {
+      const hasBoth = ls.mp3_pb && ls.mp3_dg;
+      const apVer = D('ap-ver');
+      apVer.classList.toggle('on', hasBoth);
+      D('ap-ver-pb').classList.toggle('on', true);
+      D('ap-ver-dg').classList.toggle('on', false);
+      const defaultSrc = ls.mp3_pb || ls.mp3_dg || null;
+      if(defaultSrc){
+        if(activeBlobUrl){ URL.revokeObjectURL(activeBlobUrl); activeBlobUrl=null; }
+        loadAudio(defaultSrc);
+      } else { unloadAudio(); }
+    }
+
+    // 課文（只讀 PDF）
+    const hasPdf = !!ls.pdf;
+    D('lib-tabs').style.display = hasPdf ? 'flex' : 'none';
+    D('lib-det-footer').style.display = hasPdf ? 'block' : 'none';
+    D('lib-practice-btn').disabled = !hasPdf;
+    libDialogue.innerHTML = ''; libVocab.innerHTML = '';
+
+    if(hasPdf){
+      libDialogue.innerHTML = '<div style="color:var(--dim);font-size:.85rem;">載入中...</div>';
+      try{
+        const buf = await fetch(ls.pdf).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); });
+        const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+        const rawText = await extractPdfText(pdf);
+        const cleaned = cleanPdfText(rawText);
+        if(ls.txt){
+          // 對話用 TXT 乾淨版，單字用 PDF
+          try{
+            const txtContent = await fetch(ls.txt).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); });
+            renderDialogueFromTxt(txtContent);
+            materialText = txtContent;
+          } catch(e){
+            renderLesson(cleaned);
+            materialText = cleaned;
+          }
+          renderVocabFromPdf(cleaned);
+        } else {
+          renderLesson(cleaned);
+          materialText = cleaned;
+        }
+      }catch(err){
+        libDialogue.innerHTML = `<div style="color:var(--red);">⚠️ 無法載入課文：${err.message}</div>`;
+        toast('課文載入失敗：'+err.message);
+      }
+    }
+  }
+
+  D('lib-practice-btn').addEventListener('click', ()=>{
+    if(currentLesson) showRoleModal(currentLesson.name);
+  });
+
+  /* ── 角色選擇 Modal ── */
+  function showRoleModal(lessonName){
+    D('role-lesson-name').textContent = formatLessonName(lessonName);
+    D('role-instruction').value = '';
+    roleModal.classList.add('open');
+  }
+
+  /* ── Script Practice ── */
+  function parseScript(text){
+    return text.split('\n')
+      .map(l=>{ const m=l.match(/^([AB]):\s*(.+)/); return m?{role:m[1],text:m[2].trim()}:null; })
+      .filter(Boolean);
+  }
+
+  function switchToPracticePage(){
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page==='practice'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-practice'));
+  }
+
+  function startShadow(){
+    shadowMode = true; myRole = 'shadow';
+    roleModal.classList.remove('open');
+    scriptLines = parseScript(materialText);
+    if(!scriptLines.length){ toast('找不到 A:/B: 對話台詞，請確認教材已載入'); return; }
+    scriptIdx = 0; practiceActive = true; pendingExpected = '';
+    history = []; speechSynthesis.cancel();
+    while(chat.firstChild) chat.removeChild(chat.firstChild);
+    empty.style.display=''; chat.appendChild(empty);
+    D('hint-box').style.display='none';
+    switchToPracticePage();
+    D('pbar-info').innerHTML = `🎧 跟讀模式 — ${formatLessonName(currentLesson?.name||'')}`;
+    D('practice-bar').style.display='flex';
+    ss('跟讀開始，AI 正在說第一句...','S');
+    setTimeout(advanceScript, 400);
+  }
+
+  function startRolePlay(role){
+    shadowMode = false; myRole = role;
+    roleModal.classList.remove('open');
+    scriptLines = parseScript(materialText);
+    if(!scriptLines.length){ toast('找不到 A:/B: 對話台詞，請確認 PDF 已載入'); return; }
+    scriptIdx = 0; practiceActive = true; pendingExpected = '';
+    history = []; speechSynthesis.cancel();
+
+    // Reset chat manually (don't call clearChat to preserve myRole)
+    while(chat.firstChild) chat.removeChild(chat.firstChild);
+    empty.style.display=''; chat.appendChild(empty);
+    D('hint-box').style.display='none';
+
+    switchToPracticePage();
+
+    const aiRole = myRole==='A'?'B':'A';
+    D('pbar-info').innerHTML = `你扮演 <strong>${myRole}:</strong>　AI 扮演 <strong>${aiRole}:</strong>　— ${formatLessonName(currentLesson?.name||'')}`;
+    D('practice-bar').style.display='flex';
+    ss('練習開始，AI 正在說第一句...','S');
+    setTimeout(advanceScript, 400);
+  }
+
+  function stopPractice(){
+    practiceActive=false; scriptLines=[]; scriptIdx=0; pendingExpected=''; myRole=''; shadowMode=false;
+    speechSynthesis.cancel();
+    D('practice-bar').style.display='none';
+    D('hint-box').style.display='none';
+    clearChat();
+    ss(apiKey?readyMsg():'請先在設定中填入 Gemini API Key');
+    toast('練習已結束');
+  }
+  D('pbar-stop').addEventListener('click', stopPractice);
+
+  function speakLine(text, onDone){
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US'; u.rate=rate;
+    const vs=speechSynthesis.getVoices();
+    if(voice){ const v=vs.find(v=>v.name===voice); if(v)u.voice=v; }
+    else { const v=vs.find(v=>v.lang==='en-US')||vs.find(v=>v.lang.startsWith('en')); if(v)u.voice=v; }
+    u.onstart=()=>ss(`🔊 ${myRole==='A'?'B':'A'}: 說話中...`,'S');
+    u.onend=u.onerror=()=>{ ss(''); if(onDone)onDone(); };
+    speechSynthesis.speak(u);
+  }
+
+  function advanceScript(){
+    if(!practiceActive) return;
+
+    // 跟讀模式：AI 說任何角色的台詞，使用者跟著重複
+    if(shadowMode){
+      if(scriptIdx >= scriptLines.length){
+        practiceActive=false;
+        D('hint-box').style.display='none';
+        D('practice-bar').style.display='none';
+        addPracticeEnd(); return;
+      }
+      const line = scriptLines[scriptIdx]; scriptIdx++;
+      addScriptMsg(line.role, line.text);
+      speakLine(line.text, ()=>{ setTimeout(()=>setupShadowTurn(line.text), 300); });
+      return;
+    }
+
+    const aiRole = myRole==='A'?'B':'A';
+
+    // Collect all consecutive AI lines
+    const aiLines=[];
+    while(scriptIdx < scriptLines.length && scriptLines[scriptIdx].role===aiRole){
+      aiLines.push(scriptLines[scriptIdx].text);
+      scriptIdx++;
+    }
+
+    if(!aiLines.length){
+      setupUserTurn();
+      return;
+    }
+
+    const fullText = aiLines.join(' ');
+    addScriptMsg(aiRole, fullText);
+    speakLine(fullText, ()=>{ setTimeout(setupUserTurn, 300); });
+  }
+
+  function setupShadowTurn(expectedText){
+    if(!practiceActive) return;
+    pendingExpected = expectedText;
+    D('hint-label').textContent = '跟著說 ↑';
+    D('hint-text').textContent = expectedText;
+    D('hint-text').style.display = '';
+    D('hint-reveal').textContent = '🙈 隱藏台詞';
+    D('hint-reveal').style.display = 'inline-block';
+    D('hint-box').style.display = 'block';
+    ss('輪到你了 — 跟著說剛才那句　🎤', 'L');
+  }
+
+  function setupUserTurn(){
+    if(!practiceActive) return;
+    if(scriptIdx >= scriptLines.length){
+      // End of script
+      practiceActive=false;
+      D('hint-box').style.display='none';
+      D('practice-bar').style.display='none';
+      addPracticeEnd();
+      return;
+    }
+    if(scriptLines[scriptIdx].role !== myRole){
+      // Consecutive AI lines
+      advanceScript(); return;
+    }
+    pendingExpected = scriptLines[scriptIdx].text;
+    scriptIdx++;
+    D('hint-label').textContent = `你的台詞 (${myRole}:)`;
+    D('hint-text').textContent = pendingExpected;
+    D('hint-text').style.display = '';
+    D('hint-reveal').textContent = '🙈 隱藏提示';
+    D('hint-reveal').style.display = 'inline-block';
+    D('hint-box').style.display='block';
+    ss(`輪到你了 (${myRole}:)　— 按 🎤 說出台詞`,'L');
+  }
+
+  async function sendAnalysis(userText, expectedText){
+    if(!apiKey){toast('請先設定 API Key ⚙️');spanel.classList.add('open');return;}
+    if(!model){toast('請先查詢並選擇模型 ⚙️');spanel.classList.add('open');return;}
+    addMsg('user', userText);
+    D('hint-box').style.display='none';
+    const typ=addTyping(); ss('分析中...','T'); trackRequest();
+    try{
+      const prompt=`You are an encouraging English speaking coach.
+
+Script line the student should say:
+"${expectedText}"
+
+What the student actually said:
+"${userText}"
+
+Give concise feedback in this format:
+Line 1: ✓ Good: [what was correct] — OR — 💡 Tip: [specific grammar/vocabulary/pronunciation correction]
+Line 2: 💬 Try also: "[1–2 alternative natural phrasings for the same idea]"
+Line 3 (only if useful): 📝 [one additional note on fluency or naturalness]
+
+If the student said something very different, gently note it, then still provide Line 2. Keep it encouraging and specific.`;
+      const res=await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {method:'POST',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
+           generationConfig:{temperature:0.7,maxOutputTokens:250}})}
+      );
+      if(!res.ok){const e=await res.json();throw new Error(e?.error?.message||'HTTP '+res.status);}
+      const d=await res.json();
+      const raw=d?.candidates?.[0]?.content?.parts?.[0]?.text||'...';
+      typ.remove(); addAnalysisMsg(raw, expectedText); ss('');
+    }catch(e){
+      typ.remove(); ss('分析失敗：'+e.message);
+      addNextRetryBtns(expectedText);
+    }
+  }
+
+  function addScriptMsg(role, text){
+    empty.style.display='none';
+    const wrap=document.createElement('div'); wrap.className='msg ai script-msg';
+    const lbl=document.createElement('div'); lbl.className='mlbl'; lbl.textContent=role+': (劇本)';
+    const bbl=document.createElement('div'); bbl.className='bbl'; bbl.textContent=text;
+    const b=document.createElement('button'); b.className='spkbtn'; b.textContent='🔊 重聽';
+    b.onclick=()=>speakLine(text);
+    wrap.append(lbl,bbl,b); chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight;
+  }
+
+  function retryLine(expectedText){
+    pendingExpected = expectedText;
+    D('hint-label').textContent = shadowMode ? '再試一次 ↑' : `重試 (${myRole}:)`;
+    D('hint-text').textContent = expectedText;
+    D('hint-text').style.display = '';
+    D('hint-reveal').textContent = '🙈 隱藏提示';
+    D('hint-reveal').style.display = 'inline-block';
+    D('hint-box').style.display = 'block';
+    ss('再試一次 — 按 🎤 說出台詞', 'L');
+  }
+
+  function addNextRetryBtns(expectedText, container){
+    const actions = document.createElement('div'); actions.className = 'prac-actions';
+    const retryBtn = document.createElement('button'); retryBtn.className = 'prac-btn';
+    retryBtn.textContent = '🔄 重試這句';
+    retryBtn.onclick = ()=>{ actions.remove(); retryLine(expectedText); };
+    const nextBtn = document.createElement('button'); nextBtn.className = 'prac-btn primary';
+    nextBtn.textContent = '下一句 →';
+    nextBtn.onclick = ()=>{ actions.remove(); advanceScript(); };
+    actions.append(retryBtn, nextBtn);
+    (container||chat).appendChild(actions);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addAnalysisMsg(raw, expectedText){
+    empty.style.display='none';
+    const rawLines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    const mainLine = rawLines.find(l=>/^[✓💡]/.test(l)) || rawLines[0] || raw;
+    const tryLine  = rawLines.find(l=>/^💬/.test(l));
+    const noteLine = rawLines.find(l=>/^📝/.test(l));
+    const tryText  = tryLine ? tryLine.replace(/^💬\s*(Try\s*also\s*[：:]?\s*)?/i,'').trim() : null;
+    const extra    = noteLine ? noteLine.replace(/^📝\s*/,'').trim() : null;
+    const isGood   = /^✓/.test(mainLine);
+
+    const wrap=document.createElement('div'); wrap.className='msg ai';
+    const lbl=document.createElement('div'); lbl.className='mlbl';
+    const dot=document.createElement('span'); dot.className='score-dot '+(isGood?'score-good':'score-tip');
+    lbl.append(dot, '📊 分析');
+    const mainText = mainLine + (extra ? '\n'+extra : '');
+    const bbl=document.createElement('div'); bbl.className='bbl'; bbl.style.whiteSpace='pre-wrap'; bbl.textContent=mainText;
+    wrap.append(lbl, bbl);
+
+    if(tryText){
+      const t=document.createElement('div'); t.className='tipbox';
+      t.innerHTML=`<strong>💬 試試：</strong>${tryText}`;
+      const tb=document.createElement('button'); tb.className='spkbtn';
+      tb.textContent='🔊'; tb.onclick=()=>speakWord(tryText.replace(/["""]/g,'').split('/')[0].trim());
+      t.appendChild(tb); wrap.appendChild(t);
+    }
+    if(expectedText){
+      const b=document.createElement('button'); b.className='spkbtn';
+      b.textContent='🔊 標準版本'; b.onclick=()=>speakLine(expectedText);
+      wrap.appendChild(b);
+    }
+    chat.appendChild(wrap);
+
+    // 手動推進按鈕
+    addNextRetryBtns(expectedText);
+  }
+
+  function addPracticeEnd(){
+    empty.style.display='none';
+    const wrap=document.createElement('div'); wrap.className='msg ai';
+    const lbl=document.createElement('div'); lbl.className='mlbl'; lbl.textContent='🎉';
+    const bbl=document.createElement('div'); bbl.className='bbl';
+    bbl.textContent='整段對話練習完成！你做得很好！';
+    wrap.append(lbl,bbl); chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight;
+    ss(readyMsg()); myRole=''; toast('練習完成！');
+  }
+
+  D('role-a').addEventListener('click',()=>startRolePlay('A'));
+  D('role-b').addEventListener('click',()=>startRolePlay('B'));
+  D('role-shadow').addEventListener('click',()=>startShadow());
+  D('role-cancel').addEventListener('click',()=>roleModal.classList.remove('open'));
+
+  D('hint-reveal').addEventListener('click', ()=>{
+    const ht = D('hint-text');
+    const hidden = ht.style.display === 'none';
+    ht.style.display = hidden ? '' : 'none';
+    D('hint-reveal').textContent = hidden ? '🙈 隱藏提示' : '👁 顯示提示';
+    D('hint-reveal').style.display = 'inline-block';
+  });
+
+})();
+</script>
+</body>
+</html>
