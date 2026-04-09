@@ -1,5 +1,7 @@
 # 個人紀錄
 文檔.txt
+.gitignore
+update.bat
 
 # Python 暫存
 __pycache__/
