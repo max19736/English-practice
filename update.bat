@@ -3,7 +3,8 @@ echo [1/5] 產生 manifest...
 python generate_manifest.py
 if errorlevel 1 (
   echo 錯誤：generate_manifest.py 執行失敗
-  pause
+  echo 按任何鍵離開...
+  pause >nul
   exit /b 1
 )
 
@@ -22,7 +23,8 @@ echo [4/5] git pull（同步遠端）...
 git pull --rebase
 if errorlevel 1 (
   echo 錯誤：git pull 失敗，可能有衝突需手動處理
-  pause
+  echo 按任何鍵離開...
+  pause >nul
   exit /b 1
 )
 
@@ -30,10 +32,12 @@ echo [5/5] git push...
 git push
 if errorlevel 1 (
   echo 錯誤：git push 失敗，請確認網路或 GitHub 權限
-  pause
+  echo 按任何鍵離開...
+  pause >nul
   exit /b 1
 )
 
 echo.
 echo 完成！已上傳至 GitHub。
-pause
+echo 按任何鍵離開...
+pause >nul
