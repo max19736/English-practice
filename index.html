@@ -315,22 +315,36 @@
       pointer-events: none;
     }
     #ap-bar-wrap:hover #ap-bar-thumb { opacity: 1; }
-    #ap-vol-row { display: flex; align-items: center; gap: 8px; }
-    #ap-vol-icon { font-size: 1rem; color: var(--dim); cursor: pointer; flex-shrink: 0; user-select: none; }
+    #ap-btns { position: relative; }
+    #ap-vol-group {
+      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      display: flex; align-items: center; gap: 6px;
+    }
+    #ap-vol-icon {
+      font-size: 1.1rem; color: var(--dim); cursor: pointer;
+      user-select: none; transition: color .15s; flex-shrink: 0;
+      background: none; border: none; padding: 4px;
+    }
+    #ap-vol-icon:hover { color: var(--text); }
+    #ap-vol-slider-wrap {
+      width: 0; overflow: hidden; transition: width .2s ease;
+    }
+    #ap-vol-group:hover #ap-vol-slider-wrap,
+    #ap-vol-slider-wrap:focus-within { width: 80px; }
     #ap-vol {
-      flex: 1; -webkit-appearance: none; appearance: none;
+      width: 80px; -webkit-appearance: none; appearance: none;
       height: 4px; border-radius: 2px; background: var(--border); outline: none; cursor: pointer;
+      display: block;
     }
     #ap-vol::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
-      width: 14px; height: 14px; border-radius: 50%;
-      background: var(--accent); cursor: pointer;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; box-shadow: 0 0 0 2px var(--accent); cursor: pointer;
     }
     #ap-vol::-moz-range-thumb {
-      width: 14px; height: 14px; border-radius: 50%;
-      background: var(--accent); cursor: pointer; border: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #fff; box-shadow: 0 0 0 2px var(--accent); cursor: pointer; border: none;
     }
-    #ap-vol-pct { font-size: .72rem; color: var(--dim); min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 
     /* Tabs */
     #lib-tabs { display: flex; gap: 8px; flex-shrink: 0; }
@@ -574,6 +588,12 @@
             <button class="ap-skip" id="ap-back"><span class="skip-icon">⏮</span>10s</button>
             <button id="ap-play">▶</button>
             <button class="ap-skip" id="ap-fwd">10s<span class="skip-icon">⏭</span></button>
+            <div id="ap-vol-group">
+              <button id="ap-vol-icon">🔊</button>
+              <div id="ap-vol-slider-wrap">
+                <input type="range" id="ap-vol" min="0" max="100" step="1" value="50" />
+              </div>
+            </div>
           </div>
           <div id="ap-row">
             <span class="ap-time" id="ap-cur">0:00</span>
@@ -582,11 +602,6 @@
               <div id="ap-bar-thumb"></div>
             </div>
             <span class="ap-time" id="ap-dur">0:00</span>
-          </div>
-          <div id="ap-vol-row">
-            <span id="ap-vol-icon">🔊</span>
-            <input type="range" id="ap-vol" min="0" max="100" step="1" value="50" />
-            <span id="ap-vol-pct">100%</span>
           </div>
         </div>
         <div id="lib-tabs" style="display:none;">
@@ -1276,20 +1291,17 @@ Rules:
   const apCur    = D('ap-cur');
   const apDur    = D('ap-dur');
   const apVol    = D('ap-vol');
-  const apVolPct = D('ap-vol-pct');
   const apVolIcon= D('ap-vol-icon');
 
-  // 初始化音量（從 localStorage 讀取，預設 100）
+  // 初始化音量（從 localStorage 讀取，預設 50）
   let savedVol = parseInt(localStorage.getItem('ap_vol') ?? '50', 10);
   apVol.value = savedVol;
-  apVolPct.textContent = savedVol + '%';
   apVolIcon.textContent = savedVol === 0 ? '🔇' : savedVol < 50 ? '🔉' : '🔊';
   libAudio.volume = savedVol / 100;
 
   apVol.addEventListener('input', ()=>{
     const v = parseInt(apVol.value, 10);
     libAudio.volume = v / 100;
-    apVolPct.textContent = v + '%';
     apVolIcon.textContent = v === 0 ? '🔇' : v < 50 ? '🔉' : '🔊';
     localStorage.setItem('ap_vol', v);
   });
@@ -1301,13 +1313,11 @@ Rules:
       volBeforeMute = parseInt(apVol.value, 10);
       libAudio.volume = 0;
       apVol.value = 0;
-      apVolPct.textContent = '0%';
       apVolIcon.textContent = '🔇';
     } else {
-      const rv = volBeforeMute || 100;
+      const rv = volBeforeMute || 50;
       libAudio.volume = rv / 100;
       apVol.value = rv;
-      apVolPct.textContent = rv + '%';
       apVolIcon.textContent = rv < 50 ? '🔉' : '🔊';
     }
   });
