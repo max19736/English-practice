@@ -317,7 +317,7 @@
     #ap-bar-wrap:hover #ap-bar-thumb { opacity: 1; }
     #ap-btns { position: relative; }
     #ap-vol-group {
-      position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      position: absolute; left: 0; top: 50%; transform: translateY(-50%);
       display: flex; align-items: center; gap: 6px;
     }
     #ap-vol-icon {
@@ -333,7 +333,7 @@
     #ap-vol-slider-wrap:focus-within { width: 80px; }
     #ap-vol {
       width: 80px; -webkit-appearance: none; appearance: none;
-      height: 4px; border-radius: 2px; background: var(--border); outline: none; cursor: pointer;
+      height: 4px; border-radius: 2px; outline: none; cursor: pointer;
       display: block;
     }
     #ap-vol::-webkit-slider-thumb {
@@ -1293,16 +1293,22 @@ Rules:
   const apVol    = D('ap-vol');
   const apVolIcon= D('ap-vol-icon');
 
+  function updateVolUI(v){
+    const pct = v + '%';
+    apVol.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${pct}, var(--border) ${pct}, var(--border) 100%)`;
+    apVolIcon.textContent = v === 0 ? '🔇' : v < 50 ? '🔉' : '🔊';
+  }
+
   // 初始化音量（從 localStorage 讀取，預設 50）
   let savedVol = parseInt(localStorage.getItem('ap_vol') ?? '50', 10);
   apVol.value = savedVol;
-  apVolIcon.textContent = savedVol === 0 ? '🔇' : savedVol < 50 ? '🔉' : '🔊';
+  updateVolUI(savedVol);
   libAudio.volume = savedVol / 100;
 
   apVol.addEventListener('input', ()=>{
     const v = parseInt(apVol.value, 10);
     libAudio.volume = v / 100;
-    apVolIcon.textContent = v === 0 ? '🔇' : v < 50 ? '🔉' : '🔊';
+    updateVolUI(v);
     localStorage.setItem('ap_vol', v);
   });
 
@@ -1313,12 +1319,12 @@ Rules:
       volBeforeMute = parseInt(apVol.value, 10);
       libAudio.volume = 0;
       apVol.value = 0;
-      apVolIcon.textContent = '🔇';
+      updateVolUI(0);
     } else {
       const rv = volBeforeMute || 50;
       libAudio.volume = rv / 100;
       apVol.value = rv;
-      apVolIcon.textContent = rv < 50 ? '🔉' : '🔊';
+      updateVolUI(rv);
     }
   });
 
