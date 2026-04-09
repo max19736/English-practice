@@ -1,6 +1,0 @@
-  1. 在 英文口說練習 資料夾空白處按右鍵
-  2. 選「在終端機開啟」（或「Open in Terminal」）
-  3. 輸入：
-  git add index.html manifest.json
-  git commit -m "update"
-  git push
